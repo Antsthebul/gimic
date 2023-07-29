@@ -8,3 +8,4 @@ description="The solution for maintain foreing directories/files"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+serde_yaml = "0.8.7"

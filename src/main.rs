@@ -1,8 +1,20 @@
+use serde_yaml;
+
 use std::env;
 use std::process::Command;
+use std::path;
+
 use std::fs;
 
 fn main() {
+    let current_dir  = env::current_dir().unwrap();
+    let file_path: path::PathBuf = [current_dir, "gloc.yaml".into()].iter().collect();
+    
+   if !file_path.exists(){
+    println!("\n\x1B[1m\x1B[31mError\x1B[0m Unable to find \"gloc.yaml\". Are you in the correct directory?");
+    return;
+   }
+
     let args: Vec<String> = env::args().collect();
 
     if args.len() < 4 {
