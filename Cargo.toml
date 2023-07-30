@@ -1,9 +1,10 @@
 [package]
 name = "gimic"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 license="MIT"
 description="The solution for maintaining borrowed directories/files in remote repos"
+repository="https://github.com/Antsthebul/gimic"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
