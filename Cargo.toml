@@ -3,7 +3,7 @@ name = "gimic"
 version = "0.1.0"
 edition = "2021"
 license="MIT"
-description="The solution for maintain foreing directories/files"
+description="The solution for maintaining borrowed directories/files in remote repos"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
