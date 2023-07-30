@@ -1,0 +1,3 @@
+version: 1
+foreign_repo: "some file" # Must be specifid or passed as arg 2
+foreign_target: "some_other" # Must be specified or passed as arg 3

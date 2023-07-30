@@ -1,4 +1,9 @@
 /target
 
-# other
+# Other/Cache/logs
 *.secret
+.gump
+
+# Test files
+test
+gloc.yaml
