@@ -11,3 +11,4 @@ repository="https://github.com/Antsthebul/gimic"
 [dependencies]
 serde_yaml = "0.9.25"
 serde = { version = "1.0", features = ["derive"] }
+termcolor = "1.2"
