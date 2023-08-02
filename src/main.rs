@@ -6,17 +6,30 @@ use std::process::Command;
 use std::path;
 use std::ffi::OsStr;
 use std::fs;
-use std::io::{self, Write};
+use std::io::Write;
 
-use gimic::BaseConfig;
+mod gimic;
+use crate::gimic::*;
+
+const TEMP_BASE_PATH: &str  = ".gump/tmp";
 fn main() {
-    let current_dir  = env::current_dir().unwrap();
-    let file_path: path::PathBuf = [&current_dir, &"gloc.yaml".into()].iter().collect();
+    let current_dir = env::current_dir().unwrap();
+    let mut ancestors = current_dir.ancestors();
+    let mut found = false;
 
-    if !file_path.exists(){
-        println!("\n\x1B[1m\x1B[31mError\x1B[0m Unable to find \"gloc.yaml\". Are you in the correct directory?");
-        return;
-       }
+    'outer: for file in ancestors.next(){
+        for path in fs::read_dir(file).unwrap(){
+
+            let name = path.unwrap().file_name();
+            if name == "gloc.yaml" {
+                found = true;
+                break 'outer;
+            }
+        }
+    }
+    if !found{
+        failed_to_locate_gloc();
+    }
 
     let gump_dir_path:path::PathBuf = [&current_dir, path::Path::new(".gump")].iter().collect();
     
@@ -100,14 +113,14 @@ fn run_command(program: &str, action:&str, args: &[&Option<String>]) {
 }
 
 fn mimic_git_checkout(branch: Option<&String>, repository_url: Option<String>, target_directory: String) {
-    let temp_base_path = ".gump/tmp";
-    run_command("git", "clone", &[ &repository_url, &Some(temp_base_path.to_owned())]);
+    
+    run_command("git", "clone", &[ &repository_url, &Some(TEMP_BASE_PATH.to_owned())]);
 
     if let Some(branch_name) = branch {
         run_command("git","branch", &[&Some(branch_name.to_string())]);
     }
     
-    let temp_path = format!("{}/tests/models.py", &temp_base_path);
+    let temp_path = format!("{}/tests/models.py", &TEMP_BASE_PATH);
 
     let output_directory: String = format!("{}", target_directory);
     println!("Output => {:?}", OsStr::new(&output_directory.to_owned()));
@@ -117,7 +130,7 @@ fn mimic_git_checkout(branch: Option<&String>, repository_url: Option<String>, t
     std::fs::copy(temp_path.to_owned(),output_directory).expect("Unable to copy to specified dir");
 
     // remove dirs because enitre repos will always be 'cloned'
-    fs::remove_dir_all(temp_base_path).expect("Failed to remove");
+    fs::remove_dir_all(TEMP_BASE_PATH).expect("Failed to remove");
     
     write_green();
 }
