@@ -1,3 +1,10 @@
 version: 1
-foreign_repo: "some file" # Must be specifid or passed as arg 2
-foreign_target: "some_other" # Must be specified or passed as arg 3
+  - name: # define a name (or .gimic will create a hash)
+    alternate_repo:  # Must be specifid or passed as arg 2
+    alternate_source: # Optional, if not specifed, will use alternate target*
+    alternate_target: # Optional, if not specifed, will use alternate source*
+    force_create: false # if directory isnt present create directory
+    force_overwrite: false # will request to commit changes
+    branch: master # Optional, if not specified "main" is used
+
+# * Although these 2 items are optional, ONE of the two MUST be present, if no args are passed at the command line
