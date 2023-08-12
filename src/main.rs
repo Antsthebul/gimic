@@ -5,7 +5,6 @@ use std::process;
 
 mod gimic{
     pub mod gimic;
-    pub mod commands;
 }
 
 use crate::gimic::gimic::*;
