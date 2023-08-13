@@ -1,12 +1,15 @@
 use serde::Deserialize;
 use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
 
+use std::env;
+use std::fs::copy;
 use std::io::Write;
+use std::io;
 use std::process;
 use std::collections::VecDeque;
 use std::fs;
 use std::path;
-use std::env;
+use std::error::Error;
 use std::process::Command;
 use std::ffi::OsStr;
 
@@ -30,12 +33,22 @@ mod tests{
        
     }
 
+    #[test]
+    fn test_traverse_dir_returns_1(){
+        let current = path::PathBuf::from("gloc.yaml");
+        let mut entries: Vec<path::PathBuf> = vec![];
+        visit_dirs(current.as_path(),&mut  entries);
+
+        assert_eq!(OsStr::new("gloc.yaml"), entries.pop().unwrap().as_os_str())
+    }
+
 }
 
 #[derive(Debug, Deserialize)]
 pub struct BaseConfig{
     pub version: Option<u64>,
     pub repos: VecDeque<AlternateRepoConfig>,
+    pub fail_fast: Option<bool>
    
 
 }
@@ -91,7 +104,7 @@ impl BaseConfig{
     }
 
     fn checkout(&self, action:&str, idx:u32) {
-        println!("\n\x1B[1m\x1b[33mWarning\x1B[0m Attempting to fetch alerternate repo");
+        println!("\n\x1B[1m\x1b[33mWarning\x1B[0m Attempting to fetch alerternate repo\n");
 
         let repo: &AlternateRepoConfig;
         // if idx == 0{
@@ -101,26 +114,39 @@ impl BaseConfig{
         
         let checkout_args = vec!["-b", &repo.branch.as_ref().unwrap().as_ref(),
              &repo.alternate_repo.as_ref().unwrap().as_ref(), TEMP_BASE_PATH];
-        
-        run_command("clone", checkout_args);
-        
+    
         let target_path = path::PathBuf::from(repo.alternate_target.as_ref().unwrap());
 
-        
+
         let source_path:path::PathBuf =[TEMP_BASE_PATH, repo.alternate_source.as_ref().unwrap() ].iter().collect();
+
+        let mut response = String::new();
+
+        if target_path.exists(){
+            
+            println!("We found that {:?} already exists. Do you want to overwrite? [y/N]: ", target_path);
+            io::stdin()
+            .read_line(&mut response)
+            .expect("Error on input");
+
+            let responses = vec!["y", "yes"];
+            if !responses.contains(&response.trim().to_lowercase().as_str()){
+                println!("Exiting...");
+                
+                std::process::exit(0);
+            }
         
-        if  target_path.exists() {
-            fs::remove_file(&target_path).expect("Unable to remove target path")
+            
+    
         }
+        run_command("clone", checkout_args);
+        
+        
 
+        let fail_fast = true;
+        let file_list = traverse_dir(&source_path);
 
-        fs::create_dir_all(target_path.parent().unwrap()).expect("Unable to create dir ");
-
-        fs::copy(source_path,target_path).expect("Unable to copy to specified dir");
-
-        // remove dirs because enitre repos will always be 'cloned'
-        fs::remove_dir_all(TEMP_BASE_PATH).expect("Failed to remove");
-        write_green("Success!", "Target has been updated");
+        copy_files(file_list,target_path, fail_fast);
 
     }
 
@@ -188,14 +214,127 @@ fn run_command(action:&str, args:Vec<&str>) {
         .expect("Unable to pull down repo");
     }
 
-fn write_green(ctext: &str, text: &str){
+fn write_styled(color_choice: &str, ctext:&str, text:&str) -> Result<(), Box<dyn Error>>{
+    let color = match color_choice {
+        "green" => Color::Green,
+        "red" => Color::Red,
+        _=> Color::White
+    };
+
     let mut stdout = StandardStream::stdout(ColorChoice::Always);
-    stdout.set_color(ColorSpec::new().set_fg(Some(Color::Green)).set_bold(true))
-        .expect("Failed to set 'greren'");
-    write!(&mut stdout,"\n{}",ctext)
-        .expect("Failed to write");
-    stdout.set_color(ColorSpec::new().set_fg(Some(Color::White)))
-        .expect("Failed to set color");
-    writeln!(&mut stdout, " {}", text)  
-        .expect("Failed to write")
+    stdout.set_color(ColorSpec::new().set_fg(Some(color)).set_bold(true))?;
+    write!(&mut stdout,"\n{}",ctext)?;
+    stdout.set_color(ColorSpec::new().set_fg(Some(Color::White)))?;
+    writeln!(&mut stdout, " {}", text)?;
+    Ok(())
+}
+
+/// Calls `visit_dir`, which is that acutal traversal utility.
+///  A Vec<path::PathBuf> is returned
+fn traverse_dir(current:&path::PathBuf) -> Vec<path::PathBuf>{
+    let mut entries: Vec<path::PathBuf> = vec![];
+    visit_dirs(current.as_path(),&mut  entries);
+    entries
+}
+
+/// This is the main logic to decide whether the `target` becomes a
+/// directory of file. `file_list` contains absolute paths, starting at either 
+/// root dir or where gloc.yaml lives, gloc.yaml taking precendence.
+/// A message is generated if (un)successful
+fn copy_files(file_list:Vec<path::PathBuf>, to:path::PathBuf, fail_fast:bool){
+
+    let length = file_list.len();
+    let mut fail = false;    
+
+    for file in file_list{ //  list of absolute files (may be dir contents)
+        // println!("Copying file {:?}...", file); // turn on with verbosity
+        // find root of command(point of refernce) if not using gloc.yaml, + file
+        // .gump/tmp will always be root wehter CLI or gloc.yaml
+        let clean_source = file.strip_prefix(TEMP_BASE_PATH).unwrap();
+        
+        // strip the base parts beause either file OR cotnents of dir
+        let mut comps:VecDeque<&OsStr> = clean_source.components().map(|comp| comp.as_os_str()).collect();
+        
+        if length == 1{
+            // then target will be file
+            
+            let mut base_to:VecDeque<&OsStr>  = to.components().map(|r| r.as_os_str()).collect();
+            base_to.pop_back(); // drop file_name to create_dirs
+
+            let dirs_to_create: path::PathBuf = base_to.iter().map(|r| path::PathBuf::from(r)).collect();
+            fs::create_dir_all(path::PathBuf::from(dirs_to_create))
+            .expect("Unable to create dir");
+
+            let res = match fs::copy(&file, &to) {           
+                Err(err)=> Err(err),
+                Ok(_)=> Ok(())
+            };
+
+            if fail_fast && res.is_err(){
+                let mut text = String::from("Unable to copy to specified dir: ");
+                text.push_str(format!("{:?}", res).as_str());
+
+                write_styled("red","Fatal!",&text)
+                .expect("Couldnt write Style");
+                fail = true;
+                break;
+            }            
+        }else{
+            // target is dir, we dont need to remove base becuase this will contain all conetnts
+        
+            comps.pop_front(); // Anything after pop dir needs to be nested into target
+            let new_target = to.clone().join::<path::PathBuf>(comps.iter().map(|r| path::PathBuf::from(r)).collect()); 
+   
+            // Now we still need to pop base of nwe targets
+            let mut base_to:VecDeque<&OsStr>  = new_target.components().map(|r| r.as_os_str()).collect();
+            base_to.pop_back();
+
+            let dirs_to_create: path::PathBuf = base_to.iter().map(|r| path::PathBuf::from(r)).collect();
+            fs::create_dir_all(path::PathBuf::from(dirs_to_create))
+            .expect("Unable to create dir");
+
+            
+
+            let res = match fs::copy(&file, &new_target) {           
+                Err(err)=> Err(err),
+                Ok(_)=> Ok(())
+            };
+            if fail_fast && res.is_err(){
+                let mut text = String::from("Unable to copy to specified dir: ");
+                text.push_str(format!("{:?}", res).as_str());
+
+                write_styled("red","Fatal!",&text)
+                .expect("Couldnt write Style");
+                fail = true;
+                break;
+            }
+        }
+
+    }
+    // default operation is to remove (which will conflict with commit)
+    fs::remove_dir_all(TEMP_BASE_PATH).expect("Failed to remove");
+    if !fail{
+        let text = format!(" Copied {} file(s)", length);
+        write_styled("green", "Success!", &text)
+            .expect("Failed to write");
+    }
+ 
+}
+
+fn visit_dirs(dir: &path::Path, entries: &mut Vec<path::PathBuf>) -> io::Result<()> {
+    if dir.is_dir() {
+        for entry in fs::read_dir(dir)? {
+            let entry = entry?;
+            let path = entry.path();
+            if path.is_dir() {
+                visit_dirs(&path, entries)?;
+            } else {
+
+                entries.push(path.into());
+            }
+        }
+    }else{
+        entries.push(dir.into());        
+    }
+    Ok(())
 }
