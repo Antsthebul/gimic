@@ -46,12 +46,15 @@ If you applied installation step 2.ii, this can be run anywhere within a nested 
 ## Usage:
 
 `$ gimic checkout`
-- This is is just a wrapper around `git pull` and `cp <source> <to>`. Specifying just the action only , ie. `checkout`, and no other args means that a yaml file configuration exists somehwere in the execution path (ie. the place where you've called `gimic`) and that when the alternate_repo is pulled down, the files will be copied from the `alternate_source` to the `alternate_target`. Note that at least one of the locations needs to exists, and if only one of either option does exists, this will be the default for the other option. Meaning (super simple psudo-ish code Rust) `!alternate_source { alternate_target = alternate_source }   (and vice versa)`. This is current not encforced, but will be in later versions.
+- This is is just a wrapper around `git pull` and `cp <source> <to>`. Specifying just the action only , ie. `checkout`, and no other args means that a yaml file configuration exists somehwere in the execution path (ie. the place where you've called `gimic`) and that when the alternate_repo is pulled down, the files will be copied from the `alternate_source` to the `alternate_target`. Note that at least one of the locations needs to exists, and if only one of either option does exists, this will be the default for the other option. Meaning (super simple psudo-ish code Rust) `!alternate_source { alternate_target = alternate_source }   (and vice versa)`. **NOTE**: This is currently not enforced, but will be in later versions.
 
-- File copying resembles that of other systems, such as linux, whre target "type" is based off of "source" type. Meaning if "source" is a file, "target" will be a file (even with a designated extension). But if "source" is a directory, then target will be a direct( even IF it has a file designation). Another thing to note is that recursive file creation is standard with the `checkout` command. Similar to `mkdir -R` in Linux
+- File copying resembles, like Linux, where target "type" is based off of "source" type. Meaning if "source" ie (`alternate_source`) is a file, "target" will be a file (regardless if it contains a designated extension). But if "source" is a directory, then target will be a direct( even IF it has a file designation). Another thing to note is that recursive file creation is standard with the `checkout` command. Similar to `mkdir -R` in Linux
 
-- When checkout completes. The temporary file is removed
+- When gimic's checkout process completes. The temporary repo( aka. `alternate_repo`) is removed, unless otherwise specified within gloc.yaml configuration
 
+
+`$ gimic --[no-]skip-worktree target_dir`
+- Because `git update-index --skip-worktree <some_file>` does not handle directories, rather than needing to create some wicked one line code snippet, you can turn on/off the git's tracking (temporarily like original command) 
 
 
 ## Potential Changes
@@ -61,6 +64,7 @@ If you applied installation step 2.ii, this can be run anywhere within a nested 
 4. Allow multiple targets
 5. Incorporate commit and pushes
     - commits would require directory perisistence..
+6. allow skip worktree to specifcy alternate location
 
 ## Contributions
 Feel free to commment in the repo and let me know if you have any other suggestions or want to contribute! 

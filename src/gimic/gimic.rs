@@ -365,16 +365,20 @@ fn visit_dirs(dir: &path::Path, entries: &mut Vec<path::PathBuf>) -> io::Result<
     Ok(())
 }
 
-pub fn skip_worktree(target: String){
+pub fn skip_worktree(action: &str, mut current_dir: path::PathBuf, target: String){
     
-    let target_path = path::PathBuf::from(target);
+    let mut target_path = path::PathBuf::from(target);
+    if !target_path.has_root(){
+        target_path = [current_dir, target_path].iter().collect();
+    }
     let mut entries: Vec<path::PathBuf> = vec![];
 
     visit_dirs(target_path.as_path(),&mut  entries);
 
-
+    let skip_action = format!("--{}", action);
     for entry in &entries{
-        let args = vec!["--skip-worktree",entry.to_str().unwrap()];
+        let args = vec![skip_action.as_str(),entry.to_str().unwrap()];
+        println!("Updateing {:?}", args);
         run_command("update-index", args)
     }
 
