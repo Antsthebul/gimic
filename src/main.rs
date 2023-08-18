@@ -22,6 +22,7 @@ fn main() {
                 Ok(x) => BaseConfig::build_mapping_w_yaml(x),
                 _ =>process::exit(1)
         };
+        
         create_temporary_file_store(&current_dir);  
         args.pop_front(); // drop program name
         let action = args.pop_front().unwrap();

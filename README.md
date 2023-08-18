@@ -7,7 +7,7 @@ Nested repo code updates
 ```
 repo 1 <Main_repo>
 |
-|- repo2[foo] # foo is a dir in repo2
+|- /some/cool/file/from/repo2
 ```
 
 Easily manage specific files/directories from other repos "remotely". 
@@ -27,7 +27,7 @@ Make sure you have `git` installed, and your working in a git repo
 
 ## How it works:
 
-_**Gimic**_ was designed to mi ***mic*** ***Gi***t,  where although `submodules` and `subtree` are great options for including another repo into your project, you may want a little bit more granular control of what file(s) are actually pulled in and are sitting in your local directory/workspace. Using `gimic` only affects your repo where the file will appear untracked (as any new file would) so it may be a good idea to update your .gitignore file or .git/exclude  
+_**Gimic**_ was designed to mi***MIC*** ***GI***t,  where although `submodules` and `subtree` are great options for including another repo into your project, you may want a little bit more granular control of what file(s) are actually pulled in and are sitting in your local directory/workspace. Using `gimic` only affects your repo where the file will appear untracked (as any new file would) so it may be a good idea to update your .gitignore file or .git/exclude  
 
 ## Configuration:
 

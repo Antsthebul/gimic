@@ -12,3 +12,5 @@ repository="https://github.com/Antsthebul/gimic"
 serde_yaml = "0.9.25"
 serde = { version = "1.0", features = ["derive"] }
 termcolor = "1.2"
+regex = "1.9.3"
+chrono = "0.4.26"

@@ -1,11 +1,11 @@
+use chrono::Local;
+use regex::Regex;
 use serde::Deserialize;
 use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
 
-use std::env;
-use std::fs::copy;
+
 use std::io::Write;
 use std::io;
-use std::process;
 use std::collections::VecDeque;
 use std::fs;
 use std::path;
@@ -69,7 +69,18 @@ impl BaseConfig{
     fn modify_defaults(&mut self){
         for repo in &mut self.repos{
             if repo.branch.is_none(){
-                repo.branch = Some(String::from("main"))
+                repo.branch = Some(String::from("main"));
+            }
+            if repo.name.is_none(){
+                let re = Regex::new(r"/(?<name>[^/]+)\.git").unwrap();
+                let base_name = match  re.captures(repo.alternate_repo.as_ref().unwrap()){
+                    Some(name) => name["name"].to_owned(),
+                    _=> String::from("tmp"),
+                };
+                println!("{}", base_name);
+                let cur_time = Local::now().format("%m%d%y_%H%M%S");
+                let new_name = format!("{}_{}",base_name, cur_time );
+                repo.name = Some(new_name)
             }
         }
 
@@ -104,21 +115,24 @@ impl BaseConfig{
     }
 
     fn checkout(&self, action:&str, idx:u32) {
+
         println!("\n\x1B[1m\x1b[33mWarning\x1B[0m Attempting to fetch alerternate repo\n");
 
         let repo: &AlternateRepoConfig;
         // if idx == 0{
-        repo= self.repos.front().unwrap();
+        repo= &self.repos[idx.try_into().unwrap()];
         // }
         // let base_path = path::PathBuf::from(TEMP_BASE_PATH).to_str().unwrap();
-        
+        let mut repo_path = path::PathBuf::from(TEMP_BASE_PATH);
+        repo_path.push(path::PathBuf::from(repo.name.as_ref().unwrap()));
+
         let checkout_args = vec!["-b", &repo.branch.as_ref().unwrap().as_ref(),
-             &repo.alternate_repo.as_ref().unwrap().as_ref(), TEMP_BASE_PATH];
+             &repo.alternate_repo.as_ref().unwrap().as_ref(), &repo_path.as_os_str().to_str().unwrap()];
     
         let target_path = path::PathBuf::from(repo.alternate_target.as_ref().unwrap());
 
 
-        let source_path:path::PathBuf =[TEMP_BASE_PATH, repo.alternate_source.as_ref().unwrap() ].iter().collect();
+        let source_path:path::PathBuf =[repo_path.as_os_str().to_str().unwrap(), repo.alternate_source.as_ref().unwrap() ].iter().collect();
 
         let mut response = String::new();
 
@@ -146,7 +160,11 @@ impl BaseConfig{
         let fail_fast = true;
         let file_list = traverse_dir(&source_path);
 
-        copy_files(file_list,target_path, fail_fast);
+        copy_files(file_list,target_path.to_owned(), fail_fast);
+        
+        if !repo.keep_repo.unwrap(){
+            fs::remove_dir_all(target_path).expect("Failed to remove");
+        } 
 
     }
 
@@ -305,19 +323,20 @@ fn copy_files(file_list:Vec<path::PathBuf>, to:path::PathBuf, fail_fast:bool){
 
                 write_styled("red","Fatal!",&text)
                 .expect("Couldnt write Style");
-                fail = true;
+
                 break;
             }
         }
+        if !fail{
+            let text = format!(" Copied {} file(s)", length);
+            write_styled("green", "Success!", &text)
+                .expect("Failed to write");
+        }
 
     }
+
     // default operation is to remove (which will conflict with commit)
-    fs::remove_dir_all(TEMP_BASE_PATH).expect("Failed to remove");
-    if !fail{
-        let text = format!(" Copied {} file(s)", length);
-        write_styled("green", "Success!", &text)
-            .expect("Failed to write");
-    }
+
  
 }
 
