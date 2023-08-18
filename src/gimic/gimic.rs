@@ -82,7 +82,12 @@ impl BaseConfig{
                 let new_name = format!("{}_{}",base_name, cur_time );
                 repo.name = Some(new_name)
             }
+
+            if repo.keep_repo.is_none(){
+                repo.keep_repo = Some(false)
+            }
         }
+
 
     }
 
@@ -125,14 +130,16 @@ impl BaseConfig{
         // let base_path = path::PathBuf::from(TEMP_BASE_PATH).to_str().unwrap();
         let mut repo_path = path::PathBuf::from(TEMP_BASE_PATH);
         repo_path.push(path::PathBuf::from(repo.name.as_ref().unwrap()));
+        
+        let repo_path_str = repo_path.to_str().unwrap();
 
         let checkout_args = vec!["-b", &repo.branch.as_ref().unwrap().as_ref(),
-             &repo.alternate_repo.as_ref().unwrap().as_ref(), &repo_path.as_os_str().to_str().unwrap()];
+             &repo.alternate_repo.as_ref().unwrap().as_ref(), &repo_path_str];
     
         let target_path = path::PathBuf::from(repo.alternate_target.as_ref().unwrap());
 
-
-        let source_path:path::PathBuf =[repo_path.as_os_str().to_str().unwrap(), repo.alternate_source.as_ref().unwrap() ].iter().collect();
+  
+        let source_path:path::PathBuf =[repo_path_str, repo.alternate_source.as_ref().unwrap() ].iter().collect();
 
         let mut response = String::new();
 
@@ -163,7 +170,7 @@ impl BaseConfig{
         copy_files(file_list,target_path.to_owned(), fail_fast);
         
         if !repo.keep_repo.unwrap(){
-            fs::remove_dir_all(target_path).expect("Failed to remove");
+            fs::remove_dir_all(repo_path_str).expect("Failed to remove");
         } 
 
     }
@@ -327,14 +334,14 @@ fn copy_files(file_list:Vec<path::PathBuf>, to:path::PathBuf, fail_fast:bool){
                 break;
             }
         }
-        if !fail{
-            let text = format!(" Copied {} file(s)", length);
-            write_styled("green", "Success!", &text)
-                .expect("Failed to write");
-        }
+
 
     }
-
+    if !fail{
+        let text = format!(" Copied {} file(s)", length);
+        write_styled("green", "Success!", &text)
+            .expect("Failed to write");
+    }
     // default operation is to remove (which will conflict with commit)
 
  
@@ -356,4 +363,22 @@ fn visit_dirs(dir: &path::Path, entries: &mut Vec<path::PathBuf>) -> io::Result<
         entries.push(dir.into());        
     }
     Ok(())
+}
+
+pub fn skip_worktree(target: String){
+    
+    let target_path = path::PathBuf::from(target);
+    let mut entries: Vec<path::PathBuf> = vec![];
+
+    visit_dirs(target_path.as_path(),&mut  entries);
+
+
+    for entry in &entries{
+        let args = vec!["--skip-worktree",entry.to_str().unwrap()];
+        run_command("update-index", args)
+    }
+
+    let text = format!(" Updated index for {} file(s)", entries.len());
+    write_styled("green", "Success!", &text)
+        .expect("Failed to write");
 }

@@ -26,7 +26,14 @@ fn main() {
         create_temporary_file_store(&current_dir);  
         args.pop_front(); // drop program name
         let action = args.pop_front().unwrap();
-        let idx: u32 = 0;
-        config.run_action(action.as_ref(), idx, args);
+        if args.contains(&"skip-worktree".to_string()){
+            let target = args.pop_front().unwrap();
+            skip_worktree(target)
+        }else{
+
+            let idx: u32 = 0;
+            config.run_action(action.as_ref(), idx, args);
+        }
+
     }
 }
